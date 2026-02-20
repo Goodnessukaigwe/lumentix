@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { EventsModule } from './events/events.module';
+import { StellarModule } from './stellar/stellar.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { EventsModule } from './events/events.module';
     UsersModule,
     AuthModule,
     EventsModule,
+    StellarModule,
   ],
   controllers: [AppController],
   providers: [AppService],
