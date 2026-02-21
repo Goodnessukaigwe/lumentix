@@ -222,6 +222,24 @@ export class PaymentsService {
     return confirmed;
   }
 
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tickets dependency helper
+  // ─────────────────────────────────────────────────────────────────────────
+
+  async getPaymentById(paymentId: string): Promise<Payment> {
+    const payment = await this.paymentsRepository.findOne({
+      where: { id: paymentId },
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Payment "${paymentId}" not found.`);
+    }
+
+    return payment;
+  }
+
+
   // ─────────────────────────────────────────────────────────────────────────
   // Helpers
   // ─────────────────────────────────────────────────────────────────────────
@@ -263,6 +281,7 @@ export class PaymentsService {
     );
   }
 }
+
 
 // ─── Internal type helpers ────────────────────────────────────────────────────
 
