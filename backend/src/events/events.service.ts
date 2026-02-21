@@ -5,6 +5,7 @@ import { Event } from './entities/event.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { ListEventsDto } from './dto/list-events.dto';
+import { EventStateService } from './state/event-state.service';
 
 export interface PaginatedResult<T> {
   data: T[];
@@ -19,6 +20,7 @@ export class EventsService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepository: Repository<Event>,
+    private readonly eventStateService: EventStateService,
   ) {}
 
   async createEvent(dto: CreateEventDto, organizerId: string): Promise<Event> {
@@ -33,6 +35,11 @@ export class EventsService {
 
   async updateEvent(id: string, dto: UpdateEventDto): Promise<Event> {
     const event = await this.getEventById(id);
+
+    // Validate state transition before applying any updates
+    if (dto.status !== undefined && dto.status !== event.status) {
+      this.eventStateService.validateTransition(event.status, dto.status);
+    }
 
     const updates: Partial<Event> = {
       ...(dto.title !== undefined && { title: dto.title }),
