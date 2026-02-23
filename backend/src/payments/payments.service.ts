@@ -3,6 +3,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -114,7 +115,11 @@ export class PaymentsService {
   // STEP 2 — Confirm payment
   // ─────────────────────────────────────────────────────────────────────────
 
-  async confirmPayment(transactionHash: string): Promise<Payment> {
+  async confirmPayment(
+    transactionHash: string,
+    callerId: string,
+  ): Promise<Payment> {
+    // ← add callerId
     let txRecord: Awaited<ReturnType<StellarService['getTransaction']>>;
     try {
       txRecord = await this.stellarService.getTransaction(transactionHash);
@@ -140,6 +145,13 @@ export class PaymentsService {
     if (!payment) {
       throw new NotFoundException(
         `No pending payment found for memo "${memoValue}".`,
+      );
+    }
+
+    // ── Ownership check ──────────────────────────────────────────────────────
+    if (payment.userId !== callerId) {
+      throw new ForbiddenException(
+        'You are not authorised to confirm this payment.',
       );
     }
 
@@ -222,7 +234,6 @@ export class PaymentsService {
     return confirmed;
   }
 
-
   // ─────────────────────────────────────────────────────────────────────────
   // Tickets dependency helper
   // ─────────────────────────────────────────────────────────────────────────
@@ -238,7 +249,6 @@ export class PaymentsService {
 
     return payment;
   }
-
 
   // ─────────────────────────────────────────────────────────────────────────
   // Helpers
@@ -281,7 +291,6 @@ export class PaymentsService {
     );
   }
 }
-
 
 // ─── Internal type helpers ────────────────────────────────────────────────────
 
