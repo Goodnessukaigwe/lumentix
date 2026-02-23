@@ -140,17 +140,15 @@ export class StellarService implements OnModuleDestroy {
   }
 
   /**
-   * Send an exact amount of XLM or a custom asset from the escrow account
-   * to a destination address.
+   * Release all funds held in an escrow account to the destination wallet
+   * and close the escrow account.
    *
-   * Use this for refunds — unlike releaseEscrowFunds(), this does NOT
-   * merge the escrow account and sends only the specified amount.
+   * Transfers every non-native asset balance (e.g. USDC) via individual
+   * `payment` operations first, then merges the account to sweep the
+   * remaining native XLM balance to the destination.
    *
-   * @param escrowSecret   Decrypted secret of the escrow account
-   * @param destination    Recipient's Stellar public key
-   * @param amount         Exact amount to send (as a string, e.g. "10.0000000")
-   * @param assetCode      Asset code: 'XLM' or a custom asset code (e.g. 'USDC')
-   * @param assetIssuer    Required when assetCode !== 'XLM'
+   * @param escrowSecret  Decrypted secret key of the escrow account
+   * @param destination   Recipient's Stellar public key (e.g. organizer wallet)
    */
   async releaseEscrowFunds(
     escrowSecret: string,
@@ -163,19 +161,31 @@ export class StellarService implements OnModuleDestroy {
       escrowKeypair.publicKey(),
     );
 
-    // Merge account sends entire remaining balance (after fee) to destination
-    const tx = new TransactionBuilder(escrowAccount, {
+    const txBuilder = new TransactionBuilder(escrowAccount, {
       fee: BASE_FEE,
       networkPassphrase: this.networkPassphrase,
-    })
-      .addOperation(
-        Operation.accountMerge({
-          destination,
-        }),
-      )
-      .setTimeout(30)
-      .build();
+    });
 
+    // Send each non-native asset balance before merging
+    for (const balance of escrowAccount.balances) {
+      if (balance.asset_type !== 'native' && parseFloat(balance.balance) > 0) {
+        const bal = balance as Horizon.HorizonApi.BalanceLine<
+          'credit_alphanum4' | 'credit_alphanum12'
+        >;
+        txBuilder.addOperation(
+          Operation.payment({
+            destination,
+            asset: new Asset(bal.asset_code, bal.asset_issuer),
+            amount: bal.balance,
+          }),
+        );
+      }
+    }
+
+    // Merge account to send remaining XLM and close the escrow
+    txBuilder.addOperation(Operation.accountMerge({ destination }));
+
+    const tx = txBuilder.setTimeout(30).build();
     tx.sign(escrowKeypair);
     return this.server.submitTransaction(tx);
   }
