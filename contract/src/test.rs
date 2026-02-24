@@ -7,13 +7,13 @@ fn create_test_contract(env: &Env) -> (Address, Address, LumentixContractClient<
     let contract_id = env.register_contract(None, LumentixContract);
     let client = LumentixContractClient::new(env, &contract_id);
     let admin = Address::generate(env);
-    
+
     // Create and register a test token
     let token_admin = Address::generate(env);
     let token_id = env.register_stellar_asset_contract(token_admin.clone());
-    
+
     let _ = client.initialize(&admin, &token_id);
-    
+
     (admin, token_id, client)
 }
 
@@ -21,13 +21,13 @@ fn create_test_contract(env: &Env) -> (Address, Address, LumentixContractClient<
 fn test_initialize_success() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let contract_id = env.register_contract(None, LumentixContract);
     let client = LumentixContractClient::new(&env, &contract_id);
     let admin = Address::generate(&env);
     let token_admin = Address::generate(&env);
     let token_id = env.register_stellar_asset_contract(token_admin);
-    
+
     let result = client.try_initialize(&admin, &token_id);
     assert!(result.is_ok());
 }
@@ -36,9 +36,9 @@ fn test_initialize_success() {
 fn test_initialize_already_initialized() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (admin, token_id, client) = create_test_contract(&env);
-    
+
     // Try to initialize again
     let result = client.try_initialize(&admin, &token_id);
     assert_eq!(result, Err(Ok(LumentixError::AlreadyInitialized)));
@@ -48,10 +48,10 @@ fn test_initialize_already_initialized() {
 fn test_create_event_success() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -62,7 +62,7 @@ fn test_create_event_success() {
         &100i128,
         &50u32,
     );
-    
+
     assert_eq!(event_id, 1);
 }
 
@@ -70,10 +70,10 @@ fn test_create_event_success() {
 fn test_create_event_invalid_price() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let result = client.try_create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -84,7 +84,7 @@ fn test_create_event_invalid_price() {
         &0i128, // Invalid price
         &50u32,
     );
-    
+
     assert_eq!(result, Err(Ok(LumentixError::InvalidAmount)));
 }
 
@@ -92,10 +92,10 @@ fn test_create_event_invalid_price() {
 fn test_create_event_invalid_capacity() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let result = client.try_create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -106,7 +106,7 @@ fn test_create_event_invalid_capacity() {
         &100i128,
         &0u32, // Invalid capacity
     );
-    
+
     assert_eq!(result, Err(Ok(LumentixError::CapacityExceeded)));
 }
 
@@ -114,10 +114,10 @@ fn test_create_event_invalid_capacity() {
 fn test_create_event_invalid_time_range() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let result = client.try_create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -128,7 +128,7 @@ fn test_create_event_invalid_time_range() {
         &100i128,
         &50u32,
     );
-    
+
     assert_eq!(result, Err(Ok(LumentixError::InvalidTimeRange)));
 }
 
@@ -136,10 +136,10 @@ fn test_create_event_invalid_time_range() {
 fn test_create_event_empty_name() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let result = client.try_create_event(
         &organizer,
         &String::from_str(&env, ""), // Empty name
@@ -150,7 +150,7 @@ fn test_create_event_empty_name() {
         &100i128,
         &50u32,
     );
-    
+
     assert_eq!(result, Err(Ok(LumentixError::EmptyString)));
 }
 
@@ -158,14 +158,14 @@ fn test_create_event_empty_name() {
 fn test_purchase_ticket_success() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -176,7 +176,7 @@ fn test_purchase_ticket_success() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
     assert_eq!(ticket_id, 1);
 }
@@ -185,14 +185,14 @@ fn test_purchase_ticket_success() {
 fn test_purchase_ticket_insufficient_funds() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -203,7 +203,7 @@ fn test_purchase_ticket_insufficient_funds() {
         &100i128,
         &50u32,
     );
-    
+
     let result = client.try_purchase_ticket(&buyer, &event_id, &50i128); // Less than price
     assert_eq!(result, Err(Ok(LumentixError::InsufficientFunds)));
 }
@@ -212,12 +212,12 @@ fn test_purchase_ticket_insufficient_funds() {
 fn test_purchase_ticket_sold_out() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -228,11 +228,11 @@ fn test_purchase_ticket_sold_out() {
         &100i128,
         &1u32, // Only 1 ticket
     );
-    
+
     let buyer1 = Address::generate(&env);
     token_client.mint(&buyer1, &1000);
     client.purchase_ticket(&buyer1, &event_id, &100i128);
-    
+
     let buyer2 = Address::generate(&env);
     token_client.mint(&buyer2, &1000);
     let result = client.try_purchase_ticket(&buyer2, &event_id, &100i128);
@@ -243,14 +243,14 @@ fn test_purchase_ticket_sold_out() {
 fn test_use_ticket_success() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -261,9 +261,9 @@ fn test_use_ticket_success() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
-    
+
     let result = client.try_use_ticket(&ticket_id, &organizer);
     assert!(result.is_ok());
 }
@@ -272,15 +272,15 @@ fn test_use_ticket_success() {
 fn test_use_ticket_unauthorized() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
     let unauthorized = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -291,9 +291,9 @@ fn test_use_ticket_unauthorized() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
-    
+
     let result = client.try_use_ticket(&ticket_id, &unauthorized);
     assert_eq!(result, Err(Ok(LumentixError::Unauthorized)));
 }
@@ -302,14 +302,14 @@ fn test_use_ticket_unauthorized() {
 fn test_use_ticket_already_used() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -320,10 +320,10 @@ fn test_use_ticket_already_used() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
     client.use_ticket(&ticket_id, &organizer);
-    
+
     let result = client.try_use_ticket(&ticket_id, &organizer);
     assert_eq!(result, Err(Ok(LumentixError::TicketAlreadyUsed)));
 }
@@ -332,14 +332,14 @@ fn test_use_ticket_already_used() {
 fn test_cancel_event_and_refund() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -350,11 +350,11 @@ fn test_cancel_event_and_refund() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
-    
+
     let _ = client.cancel_event(&organizer, &event_id);
-    
+
     let result = client.try_refund_ticket(&ticket_id, &buyer);
     assert!(result.is_ok());
 }
@@ -363,14 +363,14 @@ fn test_cancel_event_and_refund() {
 fn test_refund_event_not_cancelled() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, token_id, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
     let buyer = Address::generate(&env);
-    
+
     let token_client = token::StellarAssetClient::new(&env, &token_id);
     token_client.mint(&buyer, &1000);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -381,9 +381,9 @@ fn test_refund_event_not_cancelled() {
         &100i128,
         &50u32,
     );
-    
+
     let ticket_id = client.purchase_ticket(&buyer, &event_id, &100i128);
-    
+
     let result = client.try_refund_ticket(&ticket_id, &buyer);
     assert_eq!(result, Err(Ok(LumentixError::EventNotCancelled)));
 }
@@ -392,10 +392,10 @@ fn test_refund_event_not_cancelled() {
 fn test_get_event() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
     let organizer = Address::generate(&env);
-    
+
     let event_id = client.create_event(
         &organizer,
         &String::from_str(&env, "Test Event"),
@@ -406,7 +406,7 @@ fn test_get_event() {
         &100i128,
         &50u32,
     );
-    
+
     let event = client.get_event(&event_id);
     assert_eq!(event.id, event_id);
     assert_eq!(event.organizer, organizer);
@@ -416,9 +416,9 @@ fn test_get_event() {
 fn test_get_event_not_found() {
     let env = Env::default();
     env.mock_all_auths();
-    
+
     let (_admin, _token, client) = create_test_contract(&env);
-    
+
     let result = client.try_get_event(&999u64);
     assert!(result.is_err());
 }
