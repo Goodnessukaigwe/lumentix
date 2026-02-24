@@ -59,4 +59,10 @@ pub enum LumentixError {
     
     /// Escrow balance insufficient for operation
     InsufficientEscrow = 18,
+    
+    /// Platform fee basis points must be between 0 and 10000
+    InvalidPlatformFee = 19,
+    
+    /// No platform fees available to withdraw
+    NoPlatformFees = 20,
 }

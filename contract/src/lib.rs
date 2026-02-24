@@ -182,8 +182,27 @@ impl LumentixContract {
         event.tickets_sold += 1;
         storage::set_event(&env, event_id, &event);
 
-        // Store payment in escrow
-        storage::add_escrow(&env, event_id, payment_amount);
+        // Calculate platform fee and organizer amount
+        let fee_bps = storage::get_platform_fee_bps(&env);
+        let platform_fee = (payment_amount * fee_bps as i128) / 10000;
+        let organizer_amount = payment_amount - platform_fee;
+
+        // Store organizer amount in escrow
+        storage::add_escrow(&env, event_id, organizer_amount);
+
+        // Add platform fee to platform balance
+        storage::add_platform_balance(&env, platform_fee);
+
+        // Emit fee collected event
+        env.events().publish(
+            (soroban_sdk::symbol_short!("fee_coll"),),
+            FeeCollectedEvent {
+                ticket_id,
+                event_id,
+                platform_fee,
+                organizer_amount,
+            },
+        );
 
         Ok(ticket_id)
     }
@@ -390,4 +409,73 @@ impl LumentixContract {
 
         Ok(storage::get_admin(&env))
     }
+
+    /// Set platform fee in basis points (only admin can call)
+    /// fee_bps: basis points (e.g., 250 = 2.5%, max 10000 = 100%)
+    pub fn set_platform_fee(env: Env, admin: Address, fee_bps: u32) -> Result<(), LumentixError> {
+        admin.require_auth();
+
+        if !storage::is_initialized(&env) {
+            return Err(LumentixError::NotInitialized);
+        }
+
+        validation::validate_address(&admin)?;
+
+        // Verify caller is admin
+        if admin != storage::get_admin(&env) {
+            return Err(LumentixError::Unauthorized);
+        }
+
+        // Validate fee is within bounds (0-10000 basis points = 0-100%)
+        if fee_bps > 10000 {
+            return Err(LumentixError::InvalidPlatformFee);
+        }
+
+        storage::set_platform_fee_bps(&env, fee_bps);
+
+        env.events()
+            .publish((soroban_sdk::symbol_short!("fee_set"),), (fee_bps,));
+
+        Ok(())
+    }
+
+    /// Get platform fee in basis points
+    pub fn get_platform_fee(env: Env) -> u32 {
+        storage::get_platform_fee_bps(&env)
+    }
+
+    /// Withdraw accumulated platform fees (only admin can call)
+    pub fn withdraw_platform_fees(env: Env, admin: Address) -> Result<i128, LumentixError> {
+        admin.require_auth();
+
+        if !storage::is_initialized(&env) {
+            return Err(LumentixError::NotInitialized);
+        }
+
+        validation::validate_address(&admin)?;
+
+        // Verify caller is admin
+        if admin != storage::get_admin(&env) {
+            return Err(LumentixError::Unauthorized);
+        }
+
+        let balance = storage::get_platform_balance(&env);
+
+        if balance <= 0 {
+            return Err(LumentixError::NoPlatformFees);
+        }
+
+        storage::clear_platform_balance(&env);
+
+        env.events()
+            .publish((soroban_sdk::symbol_short!("fee_wdrw"),), (balance,));
+
+        Ok(balance)
+    }
+
+    /// Get current platform balance
+    pub fn get_platform_balance(env: Env) -> i128 {
+        storage::get_platform_balance(&env)
+    }
 }
+
