@@ -1,9 +1,9 @@
 #![cfg(test)]
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Address, Env, String};
+use soroban_sdk::{testutils::Address as _, token, Address, Env, String};
 
-fn create_test_contract(env: &Env) -> (Address, LumentixContractClient<'_>) {
+fn create_test_contract(env: &Env) -> (Address, Address, LumentixContractClient<'_>) {
     let contract_id = env.register_contract(None, LumentixContract);
     let client = LumentixContractClient::new(env, &contract_id);
     let admin = Address::generate(env);
@@ -56,7 +56,7 @@ fn test_initialize_already_initialized() {
     let (admin, client) = create_test_contract(&env);
 
     // Try to initialize again
-    let result = client.try_initialize(&admin);
+    let result = client.try_initialize(&admin, &token_id);
     assert_eq!(result, Err(Ok(LumentixError::AlreadyInitialized)));
 }
 
@@ -226,9 +226,11 @@ fn test_purchase_ticket_sold_out() {
     client.update_event_status(&event_id, &EventStatus::Published, &organizer);
 
     let buyer1 = Address::generate(&env);
+    token_client.mint(&buyer1, &1000);
     client.purchase_ticket(&buyer1, &event_id, &100i128);
 
     let buyer2 = Address::generate(&env);
+    token_client.mint(&buyer2, &1000);
     let result = client.try_purchase_ticket(&buyer2, &event_id, &100i128);
     assert_eq!(result, Err(Ok(LumentixError::EventSoldOut)));
 }
