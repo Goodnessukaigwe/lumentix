@@ -8,6 +8,9 @@ mod validation;
 #[cfg(test)]
 mod test;
 
+pub use contract::TicketContract;
+pub use events::TransferEvent;
+pub use models::Ticket;
 pub use error::LumentixError;
 pub use types::*;
 
